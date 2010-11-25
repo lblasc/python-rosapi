@@ -1,2 +1,3 @@
 *.pyc
-pyrosapi.wpr
+*.geany
+*.wpr
