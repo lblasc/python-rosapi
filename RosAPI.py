@@ -4,15 +4,23 @@
 #       RosAPI.py
 #       
 #       Copyright 2010 David Jelić <djelic@buksna.net>
+#       Copyright 2010 Luka Blašković <lblasc@znode.net>
 #       
 
 """Python binding for Mikrotik RouterOS API"""
 __all__ = ["RosAPICore", "Networking"]
 
 class Core:
-	"""Routeros api"""
-	def __init__(self, hostname, port=8728):
+	"""Core part of Router OS API
+	
+	It contains methods necessary to extract raw data from the router.
+	If object is instanced with DEBUG = True parameter, it runs in verbosity mode.
+	
+	Core part is taken mostly from http://wiki.mikrotik.com/wiki/Manual:API#Example_client."""
+
+	def __init__(self, hostname, port=8728, DEBUG=False):
 		import socket
+		self.DEBUG = DEBUG
 		self.hostname = hostname
 		self.port = port
 		self.currenttag = 0
@@ -64,13 +72,15 @@ class Core:
 			r.append(w)
 			
 	def writeWord(self, w):
-		print "<<< " + w
+		if self.DEBUG:
+			print "<<< " + w
 		self.writeLen(len(w))
 		self.writeStr(w)
 
 	def readWord(self):
 		ret = self.readStr(self.readLen())
-		print ">>> " + ret
+		if self.DEBUG:
+			print ">>> " + ret
 		return ret
 
 	def writeLen(self, l):
@@ -188,5 +198,27 @@ class Core:
 					inputsentence = []
 				else:
 					inputsentence.append(l)
-
 		return 0
+
+class Networking(Core):
+	"""Handles network part of Mikrotik Router OS
+	
+	Contains functions for pulling informations about interfaces,
+	routes, wireless registrations, etc."""
+	
+	def get_all_interfaces(self):
+		"""Pulls out all available data related to network interfaces"""
+
+		word = ["/interface/print"]
+		response = Core.talk(self, word)
+		response = Core.response_handler(self, response)
+		return response
+
+def test():
+	tik = Core("172.16.1.1", DEBUG=True)
+	tik.login("admin", "")
+	tik.run_interpreter()
+
+if __name__ == "__main__":
+	test()
+
