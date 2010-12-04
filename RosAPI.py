@@ -18,14 +18,10 @@ class Core:
 	
 	Core part is taken mostly from http://wiki.mikrotik.com/wiki/Manual:API#Example_client."""
 
-	def __init__(self, hostname, port=8728, DEBUG=False):
-		import socket
+	def __init__(self, sk, DEBUG=False):
 		self.DEBUG = DEBUG
-		self.hostname = hostname
-		self.port = port
 		self.currenttag = 0
-		self.sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.sk.connect((self.hostname, self.port))
+		self.sk = sk
 
 	def login(self, username, pwd):
 		import binascii
@@ -215,8 +211,11 @@ class Networking(Core):
 		return response
 
 def test():
-	tik = Core("172.16.1.1", DEBUG=True)
-	tik.login("admin", "")
+	import socket
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.connect(("192.168.56.100", 8728))
+	tik = Core(s, DEBUG=True)
+	tik.login(username="admin", pwd="")
 	tik.run_interpreter()
 
 if __name__ == "__main__":
