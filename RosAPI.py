@@ -31,13 +31,38 @@ class Core:
 		import binascii
 		from hashlib import md5
 
-		for repl, attrs in self.talk(["/login"]):
-			chal = binascii.unhexlify(attrs['=ret'])
+		chal = None
+		for repl, attrs in self.talk(["/login", "=name=" + username, "=password=" + pwd]):
+			if repl == '!trap':
+				if self.DEBUG:
+					print "    Authentication: failed"
+				return False
+			elif '=ret' in attrs.keys():
+				chal = binascii.unhexlify(attrs['=ret'])
+			elif repl == '!done':
+				if self.DEBUG:
+					print("    Authentication: done")
+				return True
+			else:
+				if self.DEBUG:
+					print "    Authentication: failed"
+				return False
 		md = md5()
 		md.update('\x00')
 		md.update(pwd)
 		md.update(chal)
-		self.talk(["/login", "=name=" + username, "=response=00" + binascii.hexlify(md.digest())])
+		for repl2, attrs2 in self.talk(["/login", "=name=" + username, "=response=00" + binascii.hexlify(md.digest())]):
+			if repl2 == '!trap':
+				if self.DEBUG:
+					print("    Authentication: failed")
+				return False
+			elif repl2 == '!done':
+				if self.DEBUG:
+					print("    Authentication: done")
+				return True
+		if self.DEBUG:
+			print("    Authentication: unknown")
+		return False
 
 	def talk(self, words):
 		if self.writeSentence(words) == 0: return
