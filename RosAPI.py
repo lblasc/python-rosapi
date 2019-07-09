@@ -27,17 +27,40 @@ class Core:
 		self.sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.sk.connect((self.hostname, self.port))
 
+	def print_debug(self, *args):
+		if self.DEBUG:
+			print(args)
+
 	def login(self, username, pwd):
 		import binascii
 		from hashlib import md5
 
-		for repl, attrs in self.talk(["/login"]):
-			chal = binascii.unhexlify(attrs['=ret'])
+		chal = None
+		for repl, attrs in self.talk(["/login", "=name=" + username, "=password=" + pwd]):
+			if repl == '!trap':
+				self.print_debug("    Authentication: failed")
+				return False
+			elif '=ret' in attrs.keys():
+				chal = binascii.unhexlify(attrs['=ret'])
+			elif repl == '!done':
+				self.print_debug("    Authentication: done")
+				return True
+			else:
+				self.print_debug("    Authentication: failed")
+				return False
 		md = md5()
 		md.update('\x00')
 		md.update(pwd)
 		md.update(chal)
-		self.talk(["/login", "=name=" + username, "=response=00" + binascii.hexlify(md.digest())])
+		for repl2, attrs2 in self.talk(["/login", "=name=" + username, "=response=00" + binascii.hexlify(md.digest())]):
+			if repl2 == '!trap':
+				self.print_debug("    Authentication: failed")
+				return False
+			elif repl2 == '!done':
+				self.print_debug("    Authentication: done")
+				return True
+		self.print_debug("    Authentication: unknown")
+		return False
 
 	def talk(self, words):
 		if self.writeSentence(words) == 0: return
@@ -72,15 +95,13 @@ class Core:
 			r.append(w)
 			
 	def writeWord(self, w):
-		if self.DEBUG:
-			print "<<< " + w
+		self.print_debug("<<< " + w)
 		self.writeLen(len(w))
 		self.writeStr(w)
 
 	def readWord(self):
 		ret = self.readStr(self.readLen())
-		if self.DEBUG:
-			print ">>> " + ret
+		self.print_debug(">>> " + ret)
 		return ret
 
 	def writeLen(self, l):
